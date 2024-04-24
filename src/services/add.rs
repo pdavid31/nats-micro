@@ -2,6 +2,8 @@ use async_nats::service::Request;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 
+use crate::handler::Handler;
+
 #[derive(Debug, Deserialize)]
 pub struct AddRequest {
     a: f64,
@@ -30,8 +32,15 @@ impl TryInto<Bytes> for AddResponse {
     }
 }
 
-pub fn add(req: AddRequest) -> Result<AddResponse, anyhow::Error> {
-    Ok(AddResponse {
-        result: req.a + req.b,
-    })
+pub struct AddHandler;
+
+impl<'a> Handler<'a> for AddHandler {
+    type Input = AddRequest;
+    type Output = AddResponse;
+
+    async fn compute(&self, user_input: Self::Input) -> Result<Self::Output, anyhow::Error> {
+        Ok(AddResponse {
+            result: user_input.a + user_input.b,
+        })
+    }
 }

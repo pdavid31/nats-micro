@@ -49,12 +49,15 @@ where
         &self,
         request: &'a async_nats::service::Request,
     ) -> Result<bytes::Bytes, async_nats::service::error::Error> {
+        // Try to construct our input object
+        // from the NATS Service Request object
         let input =
             Self::Input::try_from(request).map_err(|err| async_nats::service::error::Error {
                 status: format!("failed to deserialize request body: {}", err),
                 code: 400,
             })?;
 
+        // call the associated compute function
         let result =
             self.compute(input)
                 .await
@@ -63,10 +66,12 @@ where
                     code: 500,
                 })?;
 
+        // try to convert the result into Bytes object,
+        // allowing to easily write it back to NATS
         result
             .try_into()
             .map_err(|err| async_nats::service::error::Error {
-                status: format!("failed serialize response body: {}", err),
+                status: format!("failed to serialize response body: {}", err),
                 code: 500,
             })
     }

@@ -22,6 +22,7 @@ where
 }
 
 impl<T> Stream for EndpointHandler<T>
+// TODO: when running this, futures will block indefinetly
 where
     T: Handler + Unpin,
     <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,

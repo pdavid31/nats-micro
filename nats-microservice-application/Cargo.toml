@@ -9,8 +9,10 @@ edition = "2021"
 anyhow = "1.0.82"
 async-nats = { version = "0.34.0", features = ["service"] }
 bytes = "1.6.0"
+reqwest = { version = "0.12.4", features = ["json"] }
 serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.116"
+thiserror = "1.0.59"
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = "0.1.15"
 

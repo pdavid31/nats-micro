@@ -36,6 +36,8 @@ where
     // Handle incoming requests by feeding the underlying
     // compute function. This is the most top level function to be
     // called.
+    // TODO: it would be nice if we'd return the request and
+    // the response here, so application code might inspect these
     async fn handle(
         &self,
         request: async_nats::service::Request,

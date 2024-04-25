@@ -1,4 +1,4 @@
-use std::error::Error as StdError;
+use std::{error::Error as StdError, sync::Arc};
 
 extern crate anyhow;
 extern crate async_nats;
@@ -6,14 +6,14 @@ extern crate bytes;
 
 /// The handler trait allows us to easily implement our MicroService endpoints
 /// using plain types
-pub trait Handler<'a>
+pub trait Handler
 where
-    <Self::Input as TryFrom<&'a async_nats::service::Request>>::Error: StdError,
+    <Self::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
     <Self::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
     // Input is required to implement TryFrom<Request>, where
     // the associated error type must implement StdError (see up)
-    type Input: TryFrom<&'a async_nats::service::Request>;
+    type Input: TryFrom<Arc<async_nats::service::Request>>;
 
     // Out is required to implement TryInto<Bytes>, where
     // the associated error type must implement StdError (see up)
@@ -25,9 +25,9 @@ where
 
 /// Using the HandlerExt trait, we easily define shared behaviour between
 /// our Handlers
-pub(crate) trait HandlerExt<'a>: Handler<'a>
+pub(crate) trait HandlerExt: Handler
 where
-    <Self::Input as TryFrom<&'a async_nats::service::Request>>::Error: StdError,
+    <Self::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
     <Self::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
     // Handle incoming requests by feeding the underlying
@@ -35,20 +35,21 @@ where
     // called.
     async fn handle(
         &self,
-        request: &'a async_nats::service::Request,
+        request: async_nats::service::Request,
     ) -> Result<(), async_nats::PublishError> {
+        let request_arc = Arc::new(request);
         // call the internal procedure
         // every outcome (Ok or Error) will be handled and
         // reported back to the user
-        let response = self.internal_compute(request).await;
-        request.respond(response).await
+        let response = self.internal_compute(request_arc.clone()).await;
+        request_arc.respond(response).await
     }
 
     // Automatically handle decoding of the user request,
     // encoding of the generated response and error mapping
     async fn internal_compute(
         &self,
-        request: &'a async_nats::service::Request,
+        request: Arc<async_nats::service::Request>,
     ) -> Result<bytes::Bytes, async_nats::service::error::Error> {
         // Try to construct our input object
         // from the NATS Service Request object
@@ -79,10 +80,10 @@ where
 }
 
 // Implement the HandlerExt trait for every type that implements Handler
-impl<'a, T> HandlerExt<'a> for T
+impl<T> HandlerExt for T
 where
-    T: Handler<'a>,
-    <Self::Input as TryFrom<&'a async_nats::service::Request>>::Error: StdError,
+    T: Handler,
+    <Self::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
     <Self::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
 }

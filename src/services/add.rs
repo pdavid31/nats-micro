@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_nats::service::Request;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
@@ -10,10 +12,10 @@ pub struct AddRequest {
     b: f64,
 }
 
-impl TryFrom<&Request> for AddRequest {
+impl TryFrom<Arc<Request>> for AddRequest {
     type Error = serde_json::Error;
 
-    fn try_from(value: &Request) -> Result<Self, Self::Error> {
+    fn try_from(value: Arc<Request>) -> Result<Self, Self::Error> {
         serde_json::from_slice(&value.message.payload)
     }
 }
@@ -40,7 +42,7 @@ impl AddHandler {
     }
 }
 
-impl<'a> Handler<'a> for AddHandler {
+impl Handler for AddHandler {
     type Input = AddRequest;
     type Output = AddResponse;
 

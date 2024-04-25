@@ -1,69 +1,96 @@
 use std::{
     error::Error as StdError,
+    future::Future,
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
+    task::{ready, Context, Poll},
 };
 
+extern crate pin_project;
+
 use async_nats::service::endpoint::Endpoint;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::Stream;
 
 use crate::handler::{Handler, HandlerExt as _};
 
 // TODO: there as to be a better way to this than repeating the Input and Output requirements here
-pub struct EndpointHandler<T>
+#[pin_project::pin_project]
+pub struct EndpointHandler<T, Fut>
 where
     T: Handler,
+    Fut: Future<Output = Result<(), async_nats::PublishError>>,
     <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
     <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
-    endpoint: Endpoint,
     handler: T,
+
+    #[pin]
+    endpoint: Endpoint,
+
+    #[pin]
+    future: Option<Fut>,
 }
 
-impl<T> Stream for EndpointHandler<T>
 // TODO: when running this, futures will block indefinetly
+// NOTE: implementation inspired by https://docs.rs/futures-util/0.3.30/src/futures_util/stream/stream/then.rs.html
+impl<T, Fut> Stream for EndpointHandler<T, Fut>
 where
-    T: Handler + Unpin,
+    T: Handler,
+    Fut: Future<Output = Result<(), async_nats::PublishError>>,
     <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
     <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
-    type Item = Result<(), async_nats::PublishError>;
+    type Item = Fut::Output;
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let internal_poll = self.endpoint.poll_next_unpin(cx);
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
 
-        match internal_poll {
-            Poll::Ready(Some(request)) => {
-                let mut fut = Box::pin(self.handler.handle(request));
+        loop {
+            // Check if we currently have a future stored.
+            // If that's the case, we try to drive this to completion.
+            // Otherwise, we poll the underlying stream for a new request.
+            // If none of those options currently has a value,
+            // we just return None
+            if let Some(fut) = this.future.as_mut().as_pin_mut() {
+                let response = futures::ready!(fut.poll(cx));
+                this.future.set(None);
 
-                fut.poll_unpin(cx).map(Option::Some)
+                return Poll::Ready(Some(response));
+            } else if let Some(item) = ready!(this.endpoint.as_mut().poll_next(cx)) {
+                let x = this.handler.handle(item);
+                this.future.set(Some(x));
+
+                continue;
+            } else {
+                return Poll::Ready(None);
             }
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
         }
     }
 }
 
-pub trait EndpointWithHandler<T>
+pub trait EndpointWithHandler<T, Fut>
 where
     T: Handler,
+    Fut: Future<Output = Result<(), async_nats::PublishError>>,
     <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
     <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
-    fn with_handler(self, handler: T) -> Result<EndpointHandler<T>, anyhow::Error>;
+    fn with_handler(self, handler: T) -> Result<EndpointHandler<T, Fut>, anyhow::Error>;
 }
 
-impl<T> EndpointWithHandler<T> for Endpoint
+impl<T, Fut> EndpointWithHandler<T, Fut> for Endpoint
 where
     T: Handler,
+    Fut: Future<Output = Result<(), async_nats::PublishError>>,
     <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
     <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
-    fn with_handler(self, handler: T) -> Result<EndpointHandler<T>, anyhow::Error> {
+    fn with_handler(self, handler: T) -> Result<EndpointHandler<T, Fut>, anyhow::Error> {
         Ok(EndpointHandler {
             endpoint: self,
             handler,
+
+            future: None,
         })
     }
 }

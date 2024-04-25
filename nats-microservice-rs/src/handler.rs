@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, sync::Arc};
+use std::{error::Error as StdError, future::Future, sync::Arc};
 
 extern crate anyhow;
 extern crate async_nats;
@@ -23,7 +23,7 @@ where
     fn compute(
         &self,
         user_input: Self::Input,
-    ) -> impl std::future::Future<Output = Result<Self::Output, anyhow::Error>> + Send;
+    ) -> impl Future<Output = Result<Self::Output, anyhow::Error>>;
 }
 
 /// Using the HandlerExt trait, we easily define shared behaviour between

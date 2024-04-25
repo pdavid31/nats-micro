@@ -1,3 +1,4 @@
+mod endpoint;
 mod handler;
 mod services;
 
@@ -5,6 +6,8 @@ extern crate tokio;
 
 use async_nats::{service::ServiceExt, ConnectOptions};
 use tokio_stream::StreamMap;
+
+use crate::{endpoint::EndpointWithHandler as _, services::AddHandler};
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
@@ -32,7 +35,11 @@ async fn main() -> Result<(), async_nats::Error> {
     let v1_group = service.group("svc.math.v1");
 
     let mut stream_map = StreamMap::new();
-    stream_map.insert("svc.math.v1.add", v1_group.endpoint("add").await?);
+
+    let handler = AddHandler::new();
+    let endpoint_handler = v1_group.endpoint("add").await?.with_handler(handler)?;
+
+    stream_map.insert("svc.math.v1.add", endpoint_handler);
 
     println!("Starting to listen on {}", address);
     // while let Some((key, request)) = stream_map.next().await {

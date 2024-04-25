@@ -77,3 +77,12 @@ where
             })
     }
 }
+
+// Implement the HandlerExt trait for every type that implements Handler
+impl<'a, T> HandlerExt<'a> for T
+where
+    T: Handler<'a>,
+    <Self::Input as TryFrom<&'a async_nats::service::Request>>::Error: StdError,
+    <Self::Output as TryInto<bytes::Bytes>>::Error: StdError,
+{
+}

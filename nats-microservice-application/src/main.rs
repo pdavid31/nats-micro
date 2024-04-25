@@ -1,5 +1,3 @@
-mod endpoint;
-mod handler;
 mod services;
 
 extern crate tokio;
@@ -7,7 +5,9 @@ extern crate tokio;
 use async_nats::{service::ServiceExt, ConnectOptions};
 use tokio_stream::{StreamExt as _, StreamMap};
 
-use crate::{endpoint::EndpointWithHandler as _, services::AddHandler};
+use nats_microservice_rs::EndpointWithHandler as _;
+
+use crate::services::AddHandler;
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {

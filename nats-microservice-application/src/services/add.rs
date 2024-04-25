@@ -4,7 +4,7 @@ use async_nats::service::Request;
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 
-use crate::handler::Handler;
+use nats_microservice_rs::Handler;
 
 #[derive(Debug, Deserialize)]
 pub struct AddRequest {

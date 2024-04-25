@@ -1,3 +1,4 @@
 [workspace]
+resolver = "1"
 
 members = ["nats-microservice-rs", "nats-microservice-application"]

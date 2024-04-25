@@ -7,7 +7,7 @@ use tokio_stream::{StreamExt as _, StreamMap};
 
 use nats_microservice_rs::EndpointWithHandler as _;
 
-use crate::services::AddHandler;
+use crate::services::WeatherHandler;
 
 #[tokio::main]
 async fn main() -> Result<(), async_nats::Error> {
@@ -27,19 +27,19 @@ async fn main() -> Result<(), async_nats::Error> {
 
     let service = client
         .service_builder()
-        .description("This is a great math microservice")
-        .queue_group("svc.math")
-        .start("math", "0.1.0")
+        .description("This is a great weather microservice")
+        .queue_group("svc.weather")
+        .start("weather", "0.1.0")
         .await?;
 
-    let v1_group = service.group("svc.math.v1");
+    let v1_group = service.group("svc.weather");
 
     let mut stream_map = StreamMap::new();
 
-    let handler = AddHandler::new();
-    let endpoint_handler = v1_group.endpoint("add").await?.with_handler(handler)?;
+    let handler = WeatherHandler::new();
+    let endpoint_handler = v1_group.endpoint("v1").await?.with_handler(handler)?;
 
-    stream_map.insert("svc.math.v1.add", endpoint_handler);
+    stream_map.insert("svc.weather.v1.add", endpoint_handler);
 
     println!("Starting to listen on {}", address);
     while let Some((key, result)) = stream_map.next().await {

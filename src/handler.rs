@@ -19,6 +19,7 @@ where
     // the associated error type must implement StdError (see up)
     type Output: TryInto<bytes::Bytes>;
 
+    // TODO: we should introduce a custom error type here instead of anyhow::Error
     async fn compute(&self, user_input: Self::Input) -> Result<Self::Output, anyhow::Error>;
 }
 

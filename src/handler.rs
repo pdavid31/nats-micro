@@ -25,7 +25,7 @@ where
 
 /// Using the HandlerExt trait, we easily define shared behaviour between
 /// our Handlers
-pub trait HandlerExt<'a>: Handler<'a>
+pub(crate) trait HandlerExt<'a>: Handler<'a>
 where
     <Self::Input as TryFrom<&'a async_nats::service::Request>>::Error: StdError,
     <Self::Output as TryInto<bytes::Bytes>>::Error: StdError,

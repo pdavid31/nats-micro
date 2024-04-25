@@ -469,7 +469,6 @@ dependencies = [
  "anyhow",
  "async-nats",
  "bytes",
- "futures",
  "nats-microservice-rs",
  "serde",
  "serde_json",
@@ -485,10 +484,6 @@ dependencies = [
  "async-nats",
  "bytes",
  "futures",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
 ]
 
 [[package]]

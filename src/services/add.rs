@@ -34,6 +34,12 @@ impl TryInto<Bytes> for AddResponse {
 
 pub struct AddHandler;
 
+impl AddHandler {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 impl<'a> Handler<'a> for AddHandler {
     type Input = AddRequest;
     type Output = AddResponse;

@@ -5,7 +5,7 @@ mod services;
 extern crate tokio;
 
 use async_nats::{service::ServiceExt, ConnectOptions};
-use tokio_stream::StreamMap;
+use tokio_stream::{StreamExt as _, StreamMap};
 
 use crate::{endpoint::EndpointWithHandler as _, services::AddHandler};
 
@@ -42,12 +42,14 @@ async fn main() -> Result<(), async_nats::Error> {
     stream_map.insert("svc.math.v1.add", endpoint_handler);
 
     println!("Starting to listen on {}", address);
-    // while let Some((key, request)) = stream_map.next().await {
-    //     match key {
-    //         "svc.math.v1.add" => wrapper(services::add, &request).await?,
-    //         _ => unreachable!(),
-    //     }
-    // }
+    while let Some((key, result)) = stream_map.next().await {
+        match result {
+            Ok(_) => {}
+            Err(err) => {
+                println!("encountered error on {}: {}", key, err);
+            }
+        }
+    }
 
     Ok(())
 }

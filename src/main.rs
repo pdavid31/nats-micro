@@ -1,3 +1,4 @@
+mod handler;
 mod services;
 
 use std::error::Error as StdError;

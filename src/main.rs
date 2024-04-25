@@ -1,17 +1,9 @@
 mod handler;
 mod services;
 
-use std::error::Error as StdError;
-
 extern crate tokio;
 
-use anyhow::Error;
-use async_nats::{
-    service::{Request, ServiceExt},
-    ConnectOptions,
-};
-use bytes::Bytes;
-use futures::StreamExt;
+use async_nats::{service::ServiceExt, ConnectOptions};
 use tokio_stream::StreamMap;
 
 #[tokio::main]

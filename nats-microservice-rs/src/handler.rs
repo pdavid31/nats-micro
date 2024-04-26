@@ -6,13 +6,18 @@ extern crate bytes;
 
 /// The handler trait allows us to easily implement our MicroService endpoints
 /// using plain types
-pub trait Handler {
+pub trait Handler
+where
+    <Self::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
+    <Self::Output as TryInto<bytes::Bytes>>::Error: StdError,
+{
     // Input is required to implement TryFrom<Request>, where
-    // the associated error type must implement StdError (see up)
+    // the associated error type must implement StdError
     type Input: TryFrom<Arc<async_nats::service::Request>>;
+    // type Input where Self: TryFrom<Arc<async_nats::service::Request>> + <Self as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError;
 
     // Out is required to implement TryInto<Bytes>, where
-    // the associated error type must implement StdError (see up)
+    // the associated error type must implement StdError
     type Output: TryInto<bytes::Bytes>;
 
     // TODO: we should introduce a custom error type here instead of anyhow::Error

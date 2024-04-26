@@ -5,6 +5,8 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# NOTE: THIS CRATE REQUIRES MSRV 1.79.0 DUE TO THE USE OF ASSOCIATED TPYE BOUNDS
+
 [dependencies]
 anyhow = "1.0.82"
 async-nats = { version = "0.34.0", features = ["service"] }

@@ -6,19 +6,14 @@ extern crate bytes;
 
 /// The handler trait allows us to easily implement our MicroService endpoints
 /// using plain types
-pub trait Handler
-where
-    <Self::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
-    <Self::Output as TryInto<bytes::Bytes>>::Error: StdError,
-{
+pub trait Handler {
     // Input is required to implement TryFrom<Request>, where
     // the associated error type must implement StdError
-    type Input: TryFrom<Arc<async_nats::service::Request>>;
-    // type Input where Self: TryFrom<Arc<async_nats::service::Request>> + <Self as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError;
+    type Input: TryFrom<Arc<async_nats::service::Request>, Error: StdError>;
 
     // Out is required to implement TryInto<Bytes>, where
     // the associated error type must implement StdError
-    type Output: TryInto<bytes::Bytes>;
+    type Output: TryInto<bytes::Bytes, Error: StdError>;
 
     // TODO: we should introduce a custom error type here instead of anyhow::Error
     fn compute(
@@ -29,7 +24,7 @@ where
 
 /// Using the HandlerExt trait, we easily define shared behaviour between
 /// our Handlers
-pub(crate) trait HandlerExt {
+pub trait HandlerExt {
     // Handle incoming requests by feeding the underlying
     // compute function. This is the most top level function to be
     // called.
@@ -50,8 +45,6 @@ pub(crate) trait HandlerExt {
 impl<T> HandlerExt for T
 where
     T: Handler,
-    <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
-    <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
     // Handle incoming requests by feeding the underlying
     // compute function. This is the most top level function to be
@@ -60,6 +53,7 @@ where
         &self,
         request: async_nats::service::Request,
     ) -> Result<(), async_nats::PublishError> {
+        // wrap the received request in an arc
         let request_arc = Arc::new(request);
         // call the internal procedure
         // every outcome (Ok or Error) will be handled and

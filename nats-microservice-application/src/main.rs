@@ -41,6 +41,12 @@ async fn main() -> Result<(), async_nats::Error> {
         .start("math", "0.1.0")
         .await?;
 
+    // TODO: this is kind of tedious, it would be nice to put that into
+    // a utility trait, similar to how futures::stream::StreamExt does.
+    // Struct to store the endpoint, store the handler and itself implements
+    // Stream by getting the Endpoints next value and mapping it using Handler.
+    // This way it could easily be added to the StreamMap and our application loop
+    // would be a lot simpler
     let add_endpoint = math_service.endpoint("svc.math.v1.add").await?;
     let add_handler = AddHandler::new();
     stream_map.insert("svc.math.v1.add", add_endpoint);

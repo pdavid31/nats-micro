@@ -732,7 +732,7 @@ dependencies = [
  "async-nats",
  "bytes",
  "futures",
- "pin-project",
+ "pin-project-lite",
 ]
 
 [[package]]

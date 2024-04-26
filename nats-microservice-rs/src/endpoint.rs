@@ -1,34 +1,40 @@
 use std::{
     error::Error as StdError,
-    future::Future,
     pin::Pin,
     sync::Arc,
     task::{ready, Context, Poll},
 };
 
-extern crate pin_project;
+extern crate pin_project_lite;
 
 use async_nats::service::endpoint::Endpoint;
-use futures::Stream;
+use futures::{Future, Stream};
 
 use crate::handler::{Handler, HandlerExt as _};
 
-// TODO: there as to be a better way to this than repeating the Input and Output requirements here
-#[pin_project::pin_project]
-pub struct EndpointHandler<T, Fut>
+pin_project_lite::pin_project! {
+    #[must_use = "streams do nothing unless polled"]
+    pub struct EndpointHandler<T, Fut> {
+        #[pin]
+        endpoint: Endpoint,
+        #[pin]
+        future: Option<Fut>,
+
+        handler: T,
+    }
+}
+
+impl<T, Fut> EndpointHandler<T, Fut>
 where
     T: Handler,
-    Fut: Future<Output = Result<(), async_nats::PublishError>>,
-    <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
-    <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
-    handler: T,
-
-    #[pin]
-    endpoint: Endpoint,
-
-    #[pin]
-    future: Option<Fut>,
+    pub fn new(endpoint: Endpoint, handler: T) -> Self {
+        Self {
+            endpoint,
+            handler,
+            future: None,
+        }
+    }
 }
 
 // TODO: when running this, futures will block indefinetly
@@ -57,8 +63,9 @@ where
 
                 return Poll::Ready(Some(response));
             } else if let Some(item) = ready!(this.endpoint.as_mut().poll_next(cx)) {
-                let x = this.handler.handle(item);
-                this.future.set(Some(x));
+                let fut = this.handler.handle(item);
+                let fut_opt: Option<Fut> = Some(fut);
+                this.future.set(fut_opt);
 
                 continue;
             } else {
@@ -68,29 +75,22 @@ where
     }
 }
 
-pub trait EndpointWithHandler<T, Fut>
+pub trait EndpointWithHandler<T>
 where
     T: Handler,
-    Fut: Future<Output = Result<(), async_nats::PublishError>>,
-    <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
-    <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
-    fn with_handler(self, handler: T) -> Result<EndpointHandler<T, Fut>, anyhow::Error>;
+    type Output: Future;
+
+    fn with_handler(self, handler: T) -> Result<EndpointHandler<T, Self::Output>, anyhow::Error>;
 }
 
-impl<T, Fut> EndpointWithHandler<T, Fut> for Endpoint
+impl<T> EndpointWithHandler<T> for Endpoint
 where
     T: Handler,
-    Fut: Future<Output = Result<(), async_nats::PublishError>>,
-    <T::Input as TryFrom<Arc<async_nats::service::Request>>>::Error: StdError,
-    <T::Output as TryInto<bytes::Bytes>>::Error: StdError,
 {
-    fn with_handler(self, handler: T) -> Result<EndpointHandler<T, Fut>, anyhow::Error> {
-        Ok(EndpointHandler {
-            endpoint: self,
-            handler,
+    type Output = Pin<Box<dyn Future<Output = Result<(), async_nats::PublishError>>>>;
 
-            future: None,
-        })
+    fn with_handler(self, handler: T) -> Result<EndpointHandler<T, Self::Output>, anyhow::Error> {
+        Ok(EndpointHandler::new(self, handler))
     }
 }

@@ -28,17 +28,17 @@ pub trait HandlerExt {
     // Handle incoming requests by feeding the underlying
     // compute function. This is the most top level function to be
     // called.
-    async fn handle(
+    fn handle(
         &self,
         request: async_nats::service::Request,
-    ) -> Result<(), async_nats::PublishError>;
+    ) -> impl Future<Output = Result<(), async_nats::PublishError>>;
 
     // Automatically handle decoding of the user request,
     // encoding of the generated response and error mapping
-    async fn internal_compute(
+    fn internal_compute(
         &self,
         request: Arc<async_nats::service::Request>,
-    ) -> Result<bytes::Bytes, async_nats::service::error::Error>;
+    ) -> impl Future<Output = Result<bytes::Bytes, async_nats::service::error::Error>>;
 }
 
 // Implement the HandlerExt trait for every type that implements Handler

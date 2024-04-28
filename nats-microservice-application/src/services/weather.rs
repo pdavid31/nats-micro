@@ -172,7 +172,7 @@ impl Handler for WeatherHandler {
             .await
             .map_err(Error::FetchLocation)?;
 
-        let location = locations.first().unwrap().clone();
+        let location = locations.first().unwrap();
 
         let weather: OpenMeteoResponse = client
             .get("https://api.open-meteo.com/v1/forecast")
